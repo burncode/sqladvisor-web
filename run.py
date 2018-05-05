@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-from flask import Flask
-app = Flask(__name__,instance_relative_config=True)
-app.config.from_object('config')
-app.config.from_pyfile('config.py')
 
-from views.views import *
+from app import create_app
+
+app = create_app()
 
 if __name__ == '__main__':
-    from config import LISTEN_IP,LISTEN_PORT
-    app.run(host=LISTEN_IP,port=int(LISTEN_PORT))
+    app.run(host=app.config['LISTEN_IP'],
+            port=int(app.config['LISTEN_PORT']),
+            debug=app.config['DEBUG'])

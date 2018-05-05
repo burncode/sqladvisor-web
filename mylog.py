@@ -2,9 +2,9 @@
 import logging
 import logging.config
 
-def getLogger(name='root'):
-    CONF_LOG = "./logging.conf"
 
-    logging.config.fileConfig(CONF_LOG)
+def getLogger(name='root'):
+    logfile = "./logging.conf"
+    logging.config.fileConfig(logfile)
 
     return logging.getLogger(name)

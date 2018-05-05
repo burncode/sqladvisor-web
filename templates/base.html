@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
 
-    <link rel="icon" href="static/img/favicon.ico">
+    <link rel="icon" href="{{ url_for('static',filename='img/favicon.ico') }}">
     <!-- Bootstrap core CSS -->
     <link href="//cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="static/css/common.css" rel="stylesheet">
+    <link href="{{ url_for('static',filename='css/common.css') }}" rel="stylesheet">
 
     <title>{% block title %}SQL优化平台{% endblock %}</title>
     {% block head %}
@@ -42,6 +42,7 @@
               </ul>
             </li>
           </ul>
+        </div>
       </div>
     </nav>
 

@@ -17,14 +17,10 @@
       </select>
       </div>
       <div class="col-md-2">
-        <button type="submit" id='noflush' name='noflush' class="btn btn-success" value="noflush">分析</button>
+        <button type="submit" name='analysis' class="btn btn-success">分析</button>
       </div>
       <div class="col-md-4">
             <span id="number" style="font-size:15px"></span>
-      </div>
-      <div class="col-md-2">
-        <button type="submit" id='flush' name='flush' class="btn btn-success" value="flush">刷新缓存</button>
-        <input type="hidden" id='hidden' name='isflush' class="btn btn-success" value="">
       </div>
   </div>
   <div class="row">
@@ -39,64 +35,58 @@
 
 {% block script %}
 <script>
-$(document).ready(function() {
-    $('#analysis').submit(function() {
-        var isflush = $(document.activeElement).val();
-        if (isflush == 'noflush')
-        {
-            $("#hidden").attr('value','noflush');
-        }
-        else
-        {
-            $("#hidden").attr('value','flush');
-        }
-
-        $.post("/",$(this).serialize(),function(data) {
-            $("#textarea2").val(data['result']);
-            $("#number").text(data['sqladvisor_totalQueryCounts']);
-            var totalQueryCounts=data['sqladvisor_totalQueryCounts'];
-            var cacheStatus = data['cacheStatus'];
-            //获取此类别的查询次数,由于此key是一个md5值，每个key都不一样，
-            //所以需要删除字典中的其它项，只保留此项，然后获取value
-            var dict = data
-            delete data['result'];
-            delete data['sqladvisor_totalQueryCounts'];
-            delete data['cacheStatus'];
-            var values = [];
-            for (var key in dict) {
-                    values.push(dict[key]);
-            }
-            var countsCatagory = values[0];
-
-            if (cacheStatus == 1){
-                $("#number").text('第'+ totalQueryCounts + '次查询，本类查询' + countsCatagory + '次，本次查询命中缓存');
-                $("#number").attr("class","text-success");
-                $("#flush").removeAttr("disabled");
-            }
-            else {
-                $("#number").text('第'+ totalQueryCounts + '次查询，本类查询' + countsCatagory + '次，本次查询未命中缓存');
-                $("#number").attr("class","text-danger");
-                $("#flush").attr('disabled',true)
-            }
-        });
-        return false;
-    });
-    $('#dbhostlist').change(function() {
-        var dbhost = $('#dbhostlist option:selected').val();
-        $.ajax({
-            url: "/display_db/",
-            type: 'get',
-            data: { 'dbhost': dbhost },
-            success: function(data)
-            {
+    $(document).ready(function() {
+        $('#dbhostlist').change(function() {
+            var dbhost = $('#dbhostlist option:selected').val();
+            if(dbhost==""){
                 $('#dbname').find('option').remove();
                 $('#dbname').append('<option value="">选择数据库</option>');
-                for (var i=0;i<data['result'].length;i++){
-                    $('#dbname').append('<option value="' + data['result'][i] +'">'+ data['result'][i] +'</option>');
-                }
+                return false;
             }
+            $.ajax({
+                url: "/display_db/",
+                type: 'get',
+                data: { 'dbhost': dbhost },
+                success: function(data)
+                {
+                    var dblist = data['result'];
+                    if(dblist == ""){
+                        $('#dbname').find('option').remove();
+                        $('#dbname').append('<option value="">连接数据库错误</option>');
+                        return false;
+                    }
+                    $('#dbname').find('option').remove();
+                    $('#dbname').append('<option value="">选择数据库</option>');
+                    for (var i=0;i<(data['result']).length;i++){
+                        $('#dbname').append('<option value="' + data['result'][i] +'">'+ data['result'][i] +'</option>');
+                    }
+                }
+            });
         });
-    });
-});
+
+        $('#analysis').submit(function() {
+            $.post("/",$(this).serialize(),function(data) {
+                $("#textarea2").val(data['result']);
+                $("#number").text(data['totalQueryCounts']);
+                var totalQueryCounts=data['totalQueryCounts'];
+
+                //获取类别的查询次数,由于此key是一个md5值，每个key都不一样，
+                //所以需要删除字典中的其它项，只保留此项，然后获取value
+
+                delete data['result'];
+                delete data['totalQueryCounts'];
+
+                var values = [];
+                for (var key in data) {
+                        values.push(data[key]);
+                }
+                var categoryQueryCounts = values[0];
+
+                $("#number").text('第'+ totalQueryCounts + '次查询，本类查询' + categoryQueryCounts + '次');
+                $("#number").attr("class","text-success");
+            });
+            return false;
+        });
+    })
 </script>
 {% endblock %}
