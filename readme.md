@@ -9,12 +9,12 @@ SQLAdvisor是由美团点评公司技术工程部DBA团队（北京）开发维�
 
 ### [SQLAdvisor](https://github.com/Meituan-Dianping/SQLAdvisor)
 
-###环境说明
+### 环境说明
 - 系统：centos6.x 64位
 - python： 2.6.x 
 
 
-###部署
+### 部署
 
 1. 安装sqladvisor 
 		
@@ -31,5 +31,5 @@ SQLAdvisor是由美团点评公司技术工程部DBA团队（北京）开发维�
 
 	/var/log/sqladvisor.log
 
-#####注意： 启动redis才能正常计数，否则数字处显示为N
+##### 注意： 启动redis才能正常计数，否则数字处显示为N
 
