@@ -13,7 +13,6 @@ from flask import render_template, request, jsonify
 
 from config import *
 from . import web
-from instance.config import DB_USER, DB_PWD, DB_PORT
 from hashlib import md5
 import commands
 import redis
