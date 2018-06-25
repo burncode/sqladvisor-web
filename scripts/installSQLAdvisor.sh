@@ -13,7 +13,7 @@ clone_repo(){
 }
 
 install_dep(){
-    yum install cmake libaio-devel libffi-devel glib2 glib2-devel -y
+    yum install gcc gcc-c++ make cmake libaio-devel libffi-devel glib2 glib2-devel -y
     yum install http://www.percona.com/downloads/percona-release/redhat/0.1-3/percona-release-0.1-3.noarch.rpm -y
     yum-config-manager --enable=percona-release
     yum install Percona-Server-shared-56 -y
@@ -33,9 +33,15 @@ install_sqladvisor(){
     cd sqladvisor
     cmake -DCMAKE_BUILD_TYPE=debug ./
     make
-    [ $? -ne 0 ] && echo "sqladvisor编译错误" && exit 1
-    cp sqladvisor /usr/local/sqlparser/bin/
-    ln -sf /usr/local/sqlparser/bin/sqladvisor /bin/
+    if [ $? -ne 0 ]
+    then
+        echo "sqladvisor编译错误"
+        exit 1
+    else
+        cp sqladvisor /usr/local/sqlparser/bin/
+        ln -sf /usr/local/sqlparser/bin/sqladvisor /bin/
+        echo "sqladvisor安装成功"
+    fi
 }
 
 main(){
