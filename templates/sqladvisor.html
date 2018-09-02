@@ -1,64 +1,73 @@
 {% extends "base.html" %}
 {% block body %}
 <div class="container">
-<form id="analysis" action="/" method="post">
-  <div class="row">
-      <div class="col-md-2">
-      <select class="form-control" id="dbhostlist" name="dbhost" required>
-          <option value='' selected>选择主机</option>
-          {% for dbhost in dbhostlist %}
-            <option value={{ dbhost }}>{{ dbhost }}</option>
-          {% endfor %}
-      </select>
+    <form id="analysis" action="/" method="post">
+      <div class="row">
+          <div class="col-md-2">
+          <select class="form-control" id="db_host_list" name="db_host" required>
+              <option value='' selected>选择主机</option>
+              {% for db_host in db_host_list %}
+                <option value={{ db_host }}>{{ db_host }}</option>
+              {% endfor %}
+          </select>
+          </div>
+          <div class="col-md-2">
+          <select class="form-control" id="db_name" name="db_name" required>
+              <option value=''>选择数据库</option>
+          </select>
+          </div>
+          <div class="col-md-2">
+            <button type="submit" name='analysis' class="btn btn-success">分析</button>
+          </div>
+          <div class="col-md-4">
+                <span id="number" style="font-size:15px"></span>
+          </div>
       </div>
-      <div class="col-md-2">
-      <select class="form-control" id="dbname" name="dbname" required>
-          <option value=''>选择数据库</option>
-      </select>
+      <div class="row">
+              <textarea id="textarea1" class="form-control" name="sql_content" rows="10"
+                        placeholder="请输入查询SQL，可以输入多条sql语句，每条sql以分号结尾" required></textarea>
       </div>
-      <div class="col-md-2">
-        <button type="submit" name='analysis' class="btn btn-success">分析</button>
-      </div>
-      <div class="col-md-4">
-            <span id="number" style="font-size:15px"></span>
-      </div>
-  </div>
-  <div class="row">
-          <textarea id="textarea1" class="form-control" name="sqlcontent" rows="5" placeholder="请输入查询SQL" required></textarea>
-  </div>
-</form>
-<div class="row">
-      <textarea id="textarea2" class="form-control" rows='30' name="result" readonly></textarea>
-    </div>
+    </form>
+
+    <table id="analysis_result" class="table table-striped table-bordered table-hover">
+        <thead>
+            <tr>
+                <th class="text-center"> 序号 </th>
+                <th class="text-center"> SQL语句 </th>
+                <th class="text-center"> 分析结果 </th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
 </div>
 {% endblock %}
-
 {% block script %}
 <script>
     $(document).ready(function() {
-        $('#dbhostlist').change(function() {
-            var dbhost = $('#dbhostlist option:selected').val();
-            if(dbhost==""){
-                $('#dbname').find('option').remove();
-                $('#dbname').append('<option value="">选择数据库</option>');
+        $('#db_host_list').change(function() {
+            var db_host = $('#db_host_list option:selected').val();
+            if(db_host==""){
+                $('#db_name').find('option').remove();
+                $('#db_name').append('<option value="">选择数据库</option>');
                 return false;
             }
             $.ajax({
-                url: "/display_db/",
+                url: "/show_db/",
                 type: 'get',
-                data: { 'dbhost': dbhost },
+                data: { 'db_host': db_host },
                 success: function(data)
                 {
-                    var dblist = data['result'];
-                    if(dblist == ""){
-                        $('#dbname').find('option').remove();
-                        $('#dbname').append('<option value="">连接数据库错误</option>');
+                    var db_list = data['result'];
+                    if(db_list == ""){
+                        $('#db_name').find('option').remove();
+                        $('#db_name').append('<option value="">连接数据库错误</option>');
                         return false;
                     }
-                    $('#dbname').find('option').remove();
-                    $('#dbname').append('<option value="">选择数据库</option>');
+                    $('#db_name').find('option').remove();
+                    $('#db_name').append('<option value="">选择数据库</option>');
                     for (var i=0;i<(data['result']).length;i++){
-                        $('#dbname').append('<option value="' + data['result'][i] +'">'+ data['result'][i] +'</option>');
+                        $('#db_name').append('<option value="' + data['result'][i] +'">'+ data['result'][i] +'</option>');
                     }
                 }
             });
@@ -66,23 +75,22 @@
 
         $('#analysis').submit(function() {
             $.post("/",$(this).serialize(),function(data) {
-                $("#textarea2").val(data['result']);
-                $("#number").text(data['totalQueryCounts']);
-                var totalQueryCounts=data['totalQueryCounts'];
+                var analysis_result =  data['result'];
 
-                //获取类别的查询次数,由于此key是一个md5值，每个key都不一样，
-                //所以需要删除字典中的其它项，只保留此项，然后获取value
+                $('table tbody').html('');
+                var line = 1;
+                $.each(analysis_result,function (i,item) {
+                    $('table tbody').append('<tr><td>' + line + '</td><td>' + item[0] + '</td><td><pre>' + item[1] + '</pre></td></tr>')
+                    ++line;
+                });
+                $('pre').css({border: "0px", color: "blue", background: "none"});
 
-                delete data['result'];
-                delete data['totalQueryCounts'];
+                var query_counts=data['query_counts'];
+                var query_sql_counts=data['query_sql_counts'];
+                var current_query_sql_counts=data['current_query_sql_counts'];
+                $("#number").text(query_counts);
 
-                var values = [];
-                for (var key in data) {
-                        values.push(data[key]);
-                }
-                var categoryQueryCounts = values[0];
-
-                $("#number").text('第'+ totalQueryCounts + '次查询，本类查询' + categoryQueryCounts + '次');
+                $("#number").text('第'+ query_counts + '次分析，本次分析了' + current_query_sql_counts + '条sql，共分析了' + query_sql_counts + '条sql');
                 $("#number").attr("class","text-success");
             });
             return false;

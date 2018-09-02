@@ -13,7 +13,6 @@ from flask import render_template, request, jsonify
 
 from config import *
 from . import web
-from hashlib import md5
 import commands
 import redis
 from mylog import getLogger
@@ -24,9 +23,10 @@ LOG = getLogger('root')
 @web.route('/', methods=['GET', 'POST'])
 def analysis_sql():
     if request.is_xhr and request.method == 'POST':
-        dbhost = request.form.get('dbhost')
-        dbname = request.form.get('dbname')
-        sqlcontent = request.form.get('sqlcontent').strip().replace('\'', '\"')
+        db_host = request.form.get('db_host')
+        db_name = request.form.get('db_name')
+        sql_content = request.form.get('sql_content').strip().replace('\'', '\"')
+        sql_content = [ i.strip('\r\n') for i in sql_content.split(';') if i ]
 
         try:
             redis_conn = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
@@ -34,58 +34,56 @@ def analysis_sql():
         except redis.exceptions.ConnectionError, e:
             LOG.warning("连接redis错误: %s" % e)
 
-            sqladvisor_result = exec_sql(dbhost=dbhost, dbname=dbname, sqlcontent=sqlcontent)
-            analysis_result = {'totalQueryCounts': 'N', 'sqladvisor_xxx': 'N',
+            sqladvisor_result = exec_sql(db_host=db_host, db_name=db_name, sql_content=sql_content)
+            analysis_result = {'query_counts': 'N',
+                               'query_sql_counts': 'N',
+                               'current_query_sql_counts': 'N',
                                'result': sqladvisor_result}
 
             return jsonify(analysis_result)
 
-        categoryQueryKey = 'sqladvisor_categoryQueryCounts' + '_' + md5(dbname + '_' + sqlcontent).hexdigest()
-
-        '''
-        记录总的查询次数
-        '''
-        totalQueryCounts = redis_conn.incr('sqladvisor_totalQueryCounts')
-
-        '''
-        记录每个类别的查询次数
-        '''
-        categoryQueryCounts = redis_conn.incr(categoryQueryKey)
-
+        query_counts = redis_conn.incr('sqladvisor_query_counts')
+        query_sql_counts = redis_conn.incrby('sqladvisor_query_sql_counts', len(sql_content))
         analysis_result = {}
-        sqladvisor_result = exec_sql(dbhost=dbhost, dbname=dbname, sqlcontent=sqlcontent)
+        sqladvisor_result = exec_sql(db_host=db_host, db_name=db_name, sql_content=sql_content)
         analysis_result['result'] = sqladvisor_result
-        analysis_result[categoryQueryKey] = categoryQueryCounts
-        analysis_result['totalQueryCounts'] = totalQueryCounts
+        analysis_result['query_counts'] = query_counts
+        analysis_result['query_sql_counts'] = query_sql_counts
+        analysis_result['current_query_sql_counts'] = len(sql_content)
+
         return jsonify(analysis_result)
 
-    return render_template('sqladvisor.html', dblist=[], dbhostlist=DB_HOSTLIST)
+    return render_template('sqladvisor.html', db_list=[], db_host_list=DB_HOSTLIST)
 
 
-@web.route('/display_db/', methods=['GET', 'POST'])
-def display_db():
-    dbhost = request.args.get('dbhost')
+@web.route('/show_db/', methods=['GET', 'POST'])
+def show_db():
+    db_host = request.args.get('db_host', '')
 
-    if not dbhost:
-        dbhostlist = {'result': ''}
-        return jsonify(dbhostlist)
+    if not db_host:
+        db_host_list = {'result': ''}
+        return jsonify(db_host_list)
 
     status, output = commands.getstatusoutput("\
             mysql -u%s -p%s -P%s -h%s -e'show databases' \
-            | grep -Ev 'mysql|schema|Database'" % (DB_USER, DB_PWD, DB_PORT, dbhost))
+            | grep -Ev 'mysql|schema|Database'" % (DB_USER, DB_PWD, DB_PORT, db_host))
     if status == 0:
-        dblist = output.split('\n')
-        dblist = {'result': dblist}
+        db_list = output.split('\n')
+        db_list = {'result': db_list}
     else:
         LOG.error('连接mysql错误: %s' % output)
-        dblist = {'result': ''}
-    return jsonify(dblist)
+        db_list = {'result': ''}
+    return jsonify(db_list)
 
 
-def exec_sql(dbhost, dbname, sqlcontent):
+def exec_sql(db_host="", db_name="", sql_content=""):
     """
     执行sql分析
     """
-    status, output = commands.getstatusoutput('sqladvisor -h %s -u %s -p %s -P %s -d %s -q \' %s \' -v 1'
-                                              % (dbhost, DB_USER, DB_PWD, DB_PORT, dbname, sqlcontent))
-    return output
+    sql_result = []
+    for sql in sql_content:
+        status, output = commands.getstatusoutput('sqladvisor -h %s -u %s -p %s -P %s -d %s -q \' %s \' -v 1'
+                                                  % (db_host, DB_USER, DB_PWD, DB_PORT, db_name, sql))
+        sql_result.append(output)
+    sql_result = zip(sql_content, sql_result)
+    return sql_result
